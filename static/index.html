@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA Hybrid Electric Vehicle Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body class="theme-clean-dark">
+
+  <!-- Top Status Bar -->
+  <header class="cluster-header">
+    <div class="header-left">
+      <div class="brand-logo">
+        <span class="brand-text">AURA</span>
+        <span class="badge-hybrid">HYBRID EV</span>
+      </div>
+      <div class="system-time" id="system-time">12:00:00</div>
+    </div>
+
+    <!-- Safety Status Indicator Telltales (Clean Minimalist Text Badges) -->
+    <div class="header-center-telltales">
+      <div class="telltale" id="tt-ready">READY</div>
+      <div class="telltale" id="tt-limp">LIMP MODE</div>
+      <div class="telltale" id="tt-mil">ENGINE CHECK</div>
+      <div class="telltale" id="tt-batt">BATTERY ALERT</div>
+      <div class="telltale" id="tt-tpms">TIRE PRESSURE</div>
+      <div class="telltale" id="tt-radar">RADAR ALERT</div>
+    </div>
+
+    <div class="header-right">
+      <div class="status-pill" id="can-bus-indicator">
+        <span class="status-dot active"></span>
+        <span class="status-text">System Live</span>
+      </div>
+      <button class="btn-toggle-drawer" id="btn-toggle-controls">Drive Controls & Test Lab</button>
+    </div>
+  </header>
+
+  <!-- Top Navigation View Tabs -->
+  <nav class="view-navbar">
+    <button class="nav-tab active" data-tab="cockpit">Driver Dashboard</button>
+    <button class="nav-tab" data-tab="bms">Battery Pack Details</button>
+    <button class="nav-tab" data-tab="powertrain">Engine & Motor Details</button>
+    <button class="nav-tab" data-tab="thermal">Cooling & Climate</button>
+    <button class="nav-tab" data-tab="chassis">Tires & Safety Sensors</button>
+    <button class="nav-tab" data-tab="can-bus">CAN Bus Network</button>
+  </nav>
+
+  <!-- Main Display Screen -->
+  <main class="cluster-main">
+
+    <!-- ==================== 1. PRIMARY DRIVER COCKPIT VIEW ==================== -->
+    <section class="view-panel active" id="panel-cockpit">
+      <div class="cockpit-grid">
+
+        <!-- Left Column: Energy Dual Reservoirs & Range -->
+        <div class="cockpit-card energy-card">
+          <div class="card-header">
+            <div>
+              <h3>Energy Levels</h3>
+              <span class="card-subtitle">Battery Charge and Fuel Remaining</span>
+            </div>
+            <span class="badge-mode" id="powertrain-mode-badge">Electric Driving</span>
+          </div>
+
+          <!-- Battery SoC -->
+          <div class="energy-reservoir">
+            <div class="reservoir-header">
+              <span class="res-title">Electric Battery</span>
+              <span class="res-val" id="disp-soc-pct">82%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar bar-battery" id="bar-battery-soc" style="width: 82%;"></div>
+            </div>
+            <div class="reservoir-sub">
+              <span>Voltage: <strong id="disp-pack-v">388.0</strong> V</span>
+              <span>Flow: <strong id="disp-pack-a">0.0</strong> A</span>
+              <span>Temp: <strong id="disp-pack-temp">28.6</strong> °C</span>
+            </div>
+          </div>
+
+          <!-- Fuel Tank -->
+          <div class="energy-reservoir">
+            <div class="reservoir-header">
+              <span class="res-title">Gasoline Fuel</span>
+              <span class="res-val" id="disp-fuel-pct">76%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar bar-fuel" id="bar-fuel-level" style="width: 76%;"></div>
+            </div>
+            <div class="reservoir-sub">
+              <span>Remaining: <strong id="disp-fuel-litres">34.2</strong> L</span>
+              <span>Usage: <strong id="disp-fuel-flow">0.0</strong> L/h</span>
+              <span>Avg: <strong id="disp-avg-fuel">3.8</strong> L/100km</span>
+            </div>
+          </div>
+
+          <!-- Range Summary Cards -->
+          <div class="range-triad">
+            <div class="range-box ev-box">
+              <span class="range-label">Battery Range</span>
+              <span class="range-number" id="disp-ev-range">68</span>
+              <span class="range-unit">KM</span>
+            </div>
+            <div class="range-box fuel-box">
+              <span class="range-label">Gas Range</span>
+              <span class="range-number" id="disp-fuel-range">620</span>
+              <span class="range-unit">KM</span>
+            </div>
+            <div class="range-box total-box">
+              <span class="range-label">Total Combined</span>
+              <span class="range-number" id="disp-total-range">688</span>
+              <span class="range-unit">KM</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center Column: Speedometer & Car ADAS View -->
+        <div class="cockpit-card center-hud-card">
+          <!-- Gear Selection Ribbon -->
+          <div class="gear-selector-bar">
+            <span class="gear-btn active" id="gear-p">P</span>
+            <span class="gear-btn" id="gear-r">R</span>
+            <span class="gear-btn" id="gear-n">N</span>
+            <span class="gear-btn" id="gear-d">D</span>
+            <span class="gear-btn" id="gear-b">B</span>
+          </div>
+
+          <!-- Speedometer Dial -->
+          <div class="speedo-container">
+            <canvas id="speedo-canvas" width="320" height="210"></canvas>
+            <div class="speedo-overlay">
+              <div class="speed-digits" id="disp-speed-kmh">0</div>
+              <div class="speed-unit">KM/H</div>
+              <div class="speed-sub" id="disp-powertrain-desc">Ready to Drive</div>
+            </div>
+          </div>
+
+          <!-- Top-Down Car Visualizer -->
+          <div class="vehicle-stage">
+            <div class="blindspot-radar left" id="radar-blind-l"></div>
+            <div class="radar-cone" id="radar-front-cone">
+              <span class="radar-dist-tag" id="radar-dist-text">Distance: 45m</span>
+            </div>
+            <div class="blindspot-radar right" id="radar-blind-r"></div>
+
+            <svg class="car-wireframe-svg" viewBox="0 0 200 320">
+              <!-- Vehicle outline -->
+              <path d="M 60 30 C 75 18, 125 18, 140 30 C 150 45, 160 90, 160 140 C 160 210, 155 270, 140 295 C 125 305, 75 305, 60 295 C 45 270, 40 210, 40 140 C 40 90, 50 45, 60 30 Z" class="chassis-outline"/>
+              <path d="M 65 75 C 80 65, 120 65, 135 75 L 145 120 C 120 115, 80 115, 55 120 Z" class="glass-section"/>
+              <path d="M 60 210 C 80 215, 120 215, 140 210 L 135 245 C 115 248, 85 248, 65 245 Z" class="glass-section"/>
+
+              <!-- Tires -->
+              <rect x="25" y="50" width="16" height="42" rx="4" class="tire-graphic" id="tire-fl-glyph"/>
+              <rect x="159" y="50" width="16" height="42" rx="4" class="tire-graphic" id="tire-fr-glyph"/>
+              <rect x="25" y="225" width="16" height="42" rx="4" class="tire-graphic" id="tire-rl-glyph"/>
+              <rect x="159" y="225" width="16" height="42" rx="4" class="tire-graphic" id="tire-rr-glyph"/>
+
+              <!-- Components -->
+              <rect x="75" y="60" width="50" height="32" rx="4" class="component-box comp-motor"/>
+              <text x="100" y="80" text-anchor="middle" class="comp-text">MOTOR</text>
+
+              <rect x="65" y="130" width="70" height="65" rx="5" class="component-box comp-battery"/>
+              <text x="100" y="165" text-anchor="middle" class="comp-text">BATTERY</text>
+
+              <rect x="75" y="250" width="50" height="36" rx="4" class="component-box comp-ice"/>
+              <text x="100" y="272" text-anchor="middle" class="comp-text">ENGINE</text>
+
+              <!-- Flow lines -->
+              <path d="M 100 130 L 100 92" class="flow-line flow-ev" id="flow-batt-motor"/>
+              <path d="M 100 250 L 100 195" class="flow-line flow-ice" id="flow-ice-batt"/>
+            </svg>
+          </div>
+
+          <!-- Bottom Summary Bar -->
+          <div class="cockpit-footer-bar">
+            <span>Odometer: <strong id="disp-odometer">12,450.0</strong> km</span>
+            <span>Drive Mode: <strong id="disp-drive-mode">Comfort</strong></span>
+            <span>Regen Level: <strong id="disp-regen-badge">Medium (2)</strong></span>
+          </div>
+        </div>
+
+        <!-- Right Column: Power Flow & Engine State -->
+        <div class="cockpit-card power-card">
+          <div class="card-header">
+            <div>
+              <h3>Power Flow</h3>
+              <span class="card-subtitle">Real-Time Acceleration & Recharging</span>
+            </div>
+            <span class="status-tag" id="disp-flow-status">Electric Drive</span>
+          </div>
+
+          <!-- Electric Motor Power / Regen Gauge -->
+          <div class="metric-block">
+            <div class="metric-header-row">
+              <span class="metric-title">Electric Power</span>
+              <span class="metric-value" id="disp-motor-kw">0.0 kW</span>
+            </div>
+            <div class="dual-power-bar">
+              <div class="bar-regen-zone">
+                <div class="bar-fill regen-fill" id="bar-regen-fill" style="width: 0%;"></div>
+              </div>
+              <div class="bar-power-zone">
+                <div class="bar-fill power-fill" id="bar-power-fill" style="width: 0%;"></div>
+              </div>
+            </div>
+            <div class="power-axis-labels">
+              <span>Braking Recharge</span>
+              <span>0</span>
+              <span>Acceleration</span>
+            </div>
+          </div>
+
+          <!-- Gas Engine Status -->
+          <div class="metric-block">
+            <div class="metric-header-row">
+              <span class="metric-title">Gasoline Engine</span>
+              <span class="metric-value" id="disp-ice-rpm">0 RPM</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar bar-tacho" id="bar-tacho-rpm" style="width: 0%;"></div>
+            </div>
+            <div class="ice-sub-metrics">
+              <span>Status: <strong id="disp-ice-state-text">Off (Saving Fuel)</strong></span>
+              <span>Engine Temp: <strong id="disp-ice-temp">88.0</strong> °C</span>
+            </div>
+          </div>
+
+          <!-- Power Split Ratio -->
+          <div class="metric-block">
+            <div class="metric-header-row">
+              <span class="metric-title">Power Source Ratio</span>
+            </div>
+            <div class="split-meter">
+              <div class="split-segment ev-split" id="split-ev-bar" style="width: 100%;">Battery 100%</div>
+              <div class="split-segment ice-split" id="split-ice-bar" style="width: 0%;">0% Fuel</div>
+            </div>
+          </div>
+
+          <!-- Diagnostic Notification Box -->
+          <div class="cockpit-diag-alert" id="cockpit-diag-banner">
+            <span class="alert-indicator"></span>
+            <span class="alert-text">All Vehicle Systems Operating Normally</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== 2. BMS 96S CELL TAB ==================== -->
+    <section class="view-panel" id="panel-bms">
+      <div class="view-header">
+        <h2>High-Voltage Battery Pack</h2>
+        <span class="sub-info">96 Individual Lithium-Ion Cells in Series (350V - 425V DC)</span>
+      </div>
+
+      <div class="stats-grid-4">
+        <div class="stat-card">
+          <span class="stat-title">Charge Remaining</span>
+          <span class="stat-value color-cyan" id="bms-soc-large">82.5%</span>
+          <span class="stat-note">Usable: 17.1 kWh of 18.0 kWh</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Battery Health</span>
+          <span class="stat-value color-green" id="bms-soh-large">98.2%</span>
+          <span class="stat-note">Excellent Condition</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Voltage & Current</span>
+          <span class="stat-value color-gold" id="bms-vi-large">388.0V / 0.0A</span>
+          <span class="stat-note">Operating within nominal limits</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Electrical Safety Isolation</span>
+          <span class="stat-value color-green" id="bms-iso-large">3,200 kOhm</span>
+          <span class="stat-note">Safe (Threshold: >100 kOhm)</span>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="detail-card-header">
+          <h3>Individual Cell Voltages (96 Cells)</h3>
+          <span class="sub-note">Cell Balance Difference: <strong id="bms-cell-delta">0.012 V</strong> (Normal)</span>
+        </div>
+        <div class="cell-grid-container" id="cell-grid-96">
+          <!-- Dynamically populated 96 cell cards -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3. POWERTRAIN TAB ==================== -->
+    <section class="view-panel" id="panel-powertrain">
+      <div class="view-header">
+        <h2>Dual Powertrain (Electric + Gas)</h2>
+        <span class="sub-info">Electric Motor, Power Inverter, and 1.5L Turbo Gasoline Engine</span>
+      </div>
+
+      <div class="grid-2-col">
+        <div class="detail-card">
+          <h3>Electric Traction Motor & Inverter</h3>
+          <div class="data-row"><span>Motor Speed:</span><strong id="pt-motor-rpm">0 RPM</strong></div>
+          <div class="data-row"><span>Motor Torque:</span><strong id="pt-motor-torque">0.0 Nm</strong></div>
+          <div class="data-row"><span>Power Output / Regen:</span><strong id="pt-motor-power">0.0 kW</strong></div>
+          <div class="data-row"><span>Inverter Efficiency:</span><strong id="pt-inverter-eff">95.0%</strong></div>
+          <div class="data-row"><span>Motor Temperature:</span><strong id="pt-motor-temp">38.0 °C (Normal)</strong></div>
+          <div class="data-row"><span>Inverter Temperature:</span><strong id="pt-inv-temp">42.0 °C (Normal)</strong></div>
+        </div>
+
+        <div class="detail-card">
+          <h3>1.5L Turbocharged Gasoline Engine</h3>
+          <div class="data-row"><span>Engine State:</span><strong id="pt-ice-state">Off (Saving Fuel)</strong></div>
+          <div class="data-row"><span>Engine RPM:</span><strong id="pt-ice-rpm">0 RPM</strong></div>
+          <div class="data-row"><span>Engine Torque:</span><strong id="pt-ice-torque">0.0 Nm</strong></div>
+          <div class="data-row"><span>Engine Power:</span><strong id="pt-ice-power">0.0 kW</strong></div>
+          <div class="data-row"><span>Coolant Temperature:</span><strong id="pt-ice-coolant">88.0 °C</strong></div>
+          <div class="data-row"><span>Fuel Consumption Rate:</span><strong id="pt-ice-fuel-rate">0.0 L/hour</strong></div>
+        </div>
+
+        <div class="detail-card full-width">
+          <h3>How the Hybrid System Intelligently Switches Power</h3>
+          <div class="hcu-modes-diagram">
+            <div class="hcu-mode-box" id="hcu-box-ev">
+              <h4>1. Pure Electric Mode</h4>
+              <p>Engine is completely off. The car runs 100% on battery power with zero tailpipe emissions.</p>
+            </div>
+            <div class="hcu-mode-box" id="hcu-box-series">
+              <h4>2. Series Hybrid Mode</h4>
+              <p>Engine turns on quietly to act as an onboard generator, charging the battery while driving.</p>
+            </div>
+            <div class="hcu-mode-box" id="hcu-box-parallel">
+              <h4>3. Parallel Boost Mode</h4>
+              <p>Both engine and electric motor work together for maximum acceleration and uphill climbing.</p>
+            </div>
+            <div class="hcu-mode-box" id="hcu-box-direct">
+              <h4>4. Engine Highway Cruise</h4>
+              <p>Engine directly drives the wheels at high speeds where gasoline engines are most efficient.</p>
+            </div>
+            <div class="hcu-mode-box" id="hcu-box-regen">
+              <h4>5. Regenerative Braking</h4>
+              <p>When slowing down, the motor acts as a generator to recharge the battery using kinetic energy.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 4. THERMAL & CABIN TAB ==================== -->
+    <section class="view-panel" id="panel-thermal">
+      <div class="view-header">
+        <h2>Cooling & Cabin Climate</h2>
+        <span class="sub-info">Active Battery Cooling, Engine Radiator, and Air Conditioning</span>
+      </div>
+
+      <div class="grid-3-col">
+        <div class="detail-card">
+          <h3>Battery & Inverter Cooling</h3>
+          <div class="data-row"><span>Coolant Flow Rate:</span><strong id="th-flow-rate">12.0 L/min</strong></div>
+          <div class="data-row"><span>Coolant Temp:</span><strong id="th-coolant-temp">25.0 °C</strong></div>
+          <div class="data-row"><span>Battery Temp:</span><strong id="th-batt-temp">28.6 °C</strong></div>
+          <div class="data-row"><span>Status:</span><strong class="color-green">Optimal Range</strong></div>
+        </div>
+
+        <div class="detail-card">
+          <h3>Engine Radiator</h3>
+          <div class="data-row"><span>Engine Coolant:</span><strong id="th-ice-coolant-2">88.0 °C</strong></div>
+          <div class="data-row"><span>Radiator Fan Speed:</span><strong id="th-fan-pct">25 %</strong></div>
+          <div class="data-row"><span>Thermostat:</span><strong>Regulating</strong></div>
+          <div class="data-row"><span>Status:</span><strong class="color-green">Normal Temp</strong></div>
+        </div>
+
+        <div class="detail-card">
+          <h3>Cabin Air Conditioning (HVAC)</h3>
+          <div class="data-row"><span>Cabin Temperature:</span><strong id="th-cabin-temp">22.5 °C</strong></div>
+          <div class="data-row"><span>Target Setpoint:</span><strong id="th-cabin-target">21.0 °C</strong></div>
+          <div class="data-row"><span>AC Power Usage:</span><strong id="th-hvac-power">1.2 kW</strong></div>
+          <div class="data-row"><span>Outside Temp:</span><strong id="th-ambient-temp">24.0 °C</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 5. CHASSIS & TIRES TAB ==================== -->
+    <section class="view-panel" id="panel-chassis">
+      <div class="view-header">
+        <h2>Tires & Driver Safety Sensors</h2>
+        <span class="sub-info">Tire Pressure Monitoring (TPMS) and Forward Distance Radar</span>
+      </div>
+
+      <div class="grid-2-col">
+        <div class="detail-card">
+          <h3>Tire Pressures & Temperatures</h3>
+          <div class="tpms-layout">
+            <div class="tpms-box" id="tpms-fl">
+              <span class="tpms-pos">Front Left</span>
+              <span class="tpms-psi" id="tpms-fl-psi">35.2 PSI</span>
+              <span class="tpms-temp" id="tpms-fl-temp">32.0 °C</span>
+            </div>
+            <div class="tpms-box" id="tpms-fr">
+              <span class="tpms-pos">Front Right</span>
+              <span class="tpms-psi" id="tpms-fr-psi">35.1 PSI</span>
+              <span class="tpms-temp" id="tpms-fr-temp">32.5 °C</span>
+            </div>
+            <div class="tpms-box" id="tpms-rl">
+              <span class="tpms-pos">Rear Left</span>
+              <span class="tpms-psi" id="tpms-rl-psi">34.9 PSI</span>
+              <span class="tpms-temp" id="tpms-rl-temp">31.8 °C</span>
+            </div>
+            <div class="tpms-box" id="tpms-rr">
+              <span class="tpms-pos">Rear Right</span>
+              <span class="tpms-psi" id="tpms-rr-psi">35.0 PSI</span>
+              <span class="tpms-temp" id="tpms-rr-temp">31.9 °C</span>
+            </div>
+          </div>
+          <div class="tpms-footer">Recommended standard pressure: 34 - 36 PSI</div>
+        </div>
+
+        <div class="detail-card">
+          <h3>Active Driver Safety (ADAS)</h3>
+          <div class="data-row"><span>Vehicle Ahead Distance:</span><strong id="adas-dist">45.0 m</strong></div>
+          <div class="data-row"><span>Left Blind Spot:</span><strong id="adas-bs-l">Clear</strong></div>
+          <div class="data-row"><span>Right Blind Spot:</span><strong id="adas-bs-r">Clear</strong></div>
+          <div class="data-row"><span>Lane Keeping:</span><strong id="adas-ldw">In Lane</strong></div>
+          <div class="data-row"><span>Anti-Lock Brakes (ABS):</span><strong class="color-green">Ready</strong></div>
+          <div class="data-row"><span>Traction Control:</span><strong class="color-green">Active</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 6. CAN BUS TAB ==================== -->
+    <section class="view-panel" id="panel-can-bus">
+      <div class="view-header">
+        <h2>Automotive CAN Bus Network</h2>
+        <span class="sub-info">Standard Controller Area Network Messages Transmitted Between Vehicle Computers</span>
+      </div>
+
+      <div class="stats-grid-4">
+        <div class="stat-card">
+          <span class="stat-title">Total Messages Sent</span>
+          <span class="stat-value color-cyan" id="can-total-frames">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Bus Network Load</span>
+          <span class="stat-value color-green" id="can-bus-load">18.5%</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Speed / Cycle Rate</span>
+          <span class="stat-value">50 Hz (20ms)</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-title">Bus Health</span>
+          <span class="stat-value color-green">Healthy (No Errors)</span>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <table class="can-table">
+          <thead>
+            <tr>
+              <th>CAN ID</th>
+              <th>Message Description</th>
+              <th>Transmitting Computer</th>
+              <th>Rate</th>
+              <th>Signals & Values</th>
+            </tr>
+          </thead>
+          <tbody id="can-frames-table-body">
+            <!-- Dynamically populated CAN frames -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== INTERACTIVE CONTROLS & TEST LAB DRAWER ==================== -->
+  <aside class="controls-drawer" id="controls-drawer">
+    <div class="drawer-header">
+      <div>
+        <h3>Vehicle Controls & Test Lab</h3>
+        <span class="drawer-subtitle">Drive manually or test vehicle safety reactions</span>
+      </div>
+      <button class="btn-close-drawer" id="btn-close-drawer">✕</button>
+    </div>
+
+    <div class="drawer-content">
+
+      <!-- Section 1: Driving Controls -->
+      <div class="drawer-section">
+        <h4>1. Driver Controls</h4>
+
+        <div class="control-row">
+          <label>Accelerator Pedal: <strong id="val-accel-slider">0%</strong></label>
+          <input type="range" min="0" max="100" value="0" class="slider-accent" id="slider-accel">
+        </div>
+
+        <div class="control-row">
+          <label>Brake Pedal: <strong id="val-brake-slider">0%</strong></label>
+          <input type="range" min="0" max="100" value="0" class="slider-brake" id="slider-brake">
+        </div>
+
+        <div class="control-row">
+          <label>Gear Shift:</label>
+          <div class="btn-group">
+            <button class="btn-gear active" data-gear="P">Park (P)</button>
+            <button class="btn-gear" data-gear="R">Reverse (R)</button>
+            <button class="btn-gear" data-gear="N">Neutral (N)</button>
+            <button class="btn-gear" data-gear="D">Drive (D)</button>
+            <button class="btn-gear" data-gear="B">Brake Regen (B)</button>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <label>Drive Mode:</label>
+          <div class="btn-group">
+            <button class="btn-mode" data-mode="ECO">Eco</button>
+            <button class="btn-mode active" data-mode="COMFORT">Comfort</button>
+            <button class="btn-mode" data-mode="SPORT">Sport</button>
+            <button class="btn-mode" data-mode="EV_HOLD">Hold Battery</button>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <label>Braking Energy Recovery:</label>
+          <div class="btn-group">
+            <button class="btn-regen" data-regen="0">Off</button>
+            <button class="btn-regen" data-regen="1">Low</button>
+            <button class="btn-regen active" data-regen="2">Medium</button>
+            <button class="btn-regen" data-regen="3">One-Pedal</button>
+          </div>
+        </div>
+
+        <div class="control-row">
+          <label>Automated Driving Simulation:</label>
+          <button class="btn-action" id="btn-auto-drive">Start Automatic Driving Profile</button>
+        </div>
+      </div>
+
+      <!-- Section 2: Fault Injection Lab -->
+      <div class="drawer-section">
+        <h4>2. Safety Test Lab (Simulate Issues)</h4>
+        <p class="section-desc">Click any scenario below to see how the dashboard and vehicle computer protect the car and notify the driver:</p>
+
+        <div class="fault-grid">
+          <button class="btn-fault" data-fault="bms_overheat">Battery Overheat</button>
+          <button class="btn-fault" data-fault="cell_imbalance">Battery Cell Imbalance</button>
+          <button class="btn-fault" data-fault="isolation_loss">Electrical Isolation Loss</button>
+          <button class="btn-fault" data-fault="inverter_overheat">Inverter Overheat</button>
+          <button class="btn-fault" data-fault="engine_misfire">Engine Cylinder Misfire</button>
+          <button class="btn-fault" data-fault="engine_overheat">Engine Coolant Overheat</button>
+          <button class="btn-fault" data-fault="tire_leak">Front Left Tire Puncture</button>
+          <button class="btn-fault" data-fault="radar_blind">Radar Sensor Blocked</button>
+        </div>
+
+        <button class="btn-reset-faults" id="btn-reset-all-faults">Reset All Issues & Clear Warnings</button>
+      </div>
+
+      <!-- Section 3: Diagnostic Trouble Codes -->
+      <div class="drawer-section">
+        <h4>3. Vehicle Diagnostic Codes</h4>
+        <div class="active-dtc-container" id="drawer-dtc-list">
+          <div class="no-dtc">All vehicle computers reporting 0 issues.</div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- Scripts -->
+  <script src="/static/js/gauges.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
