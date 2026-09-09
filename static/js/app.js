@@ -103,6 +103,122 @@ document.addEventListener('DOMContentLoaded', () => {
     try { return JSON.parse(str); } catch { return {}; }
   }
 
+  // Modal Elements and State
+  let lastReportedDtcCode = null;
+  let isModalOpen = false;
+
+  const modalOverlay = document.getElementById('alert-modal-overlay');
+  const modalTitle = document.getElementById('modal-error-title');
+  const modalDesc = document.getElementById('modal-error-desc');
+  const modalSystem = document.getElementById('modal-affected-system');
+  const modalDtc = document.getElementById('modal-dtc-code');
+  const modalAction = document.getElementById('modal-action-text');
+  const btnModalFix = document.getElementById('btn-modal-fix');
+  const btnModalClose = document.getElementById('btn-modal-close');
+  const btnModalDismiss = document.getElementById('btn-modal-dismiss');
+
+  function showIncidentModal(issue) {
+    if (!modalOverlay || isModalOpen) return;
+    isModalOpen = true;
+    if (modalTitle) modalTitle.textContent = issue.title;
+    if (modalDesc) modalDesc.textContent = issue.desc;
+    if (modalSystem) modalSystem.textContent = issue.system;
+    if (modalDtc) modalDtc.textContent = issue.dtc || 'Diagnostic Alert';
+    if (modalAction) modalAction.textContent = issue.action || 'Run Automated Electronic Fix';
+    modalOverlay.classList.add('active');
+  }
+
+  function hideIncidentModal() {
+    if (!modalOverlay) return;
+    modalOverlay.classList.remove('active');
+    isModalOpen = false;
+  }
+
+  btnModalDismiss?.addEventListener('click', hideIncidentModal);
+  btnModalClose?.addEventListener('click', hideIncidentModal);
+
+  btnModalFix?.addEventListener('click', () => {
+    btnModalFix.textContent = 'Applying Automated Electronic Fix...';
+    
+    // Trigger reset faults on the backend
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'reset_faults' }));
+    }
+
+    // Reset drawer fault buttons
+    document.querySelectorAll('.btn-fault').forEach(b => b.classList.remove('active'));
+
+    setTimeout(() => {
+      btnModalFix.textContent = 'Issue Resolved! Restoring System...';
+      setTimeout(() => {
+        hideIncidentModal();
+        btnModalFix.textContent = 'Fix Issue Automatically (OK)';
+        lastReportedDtcCode = null;
+      }, 700);
+    }, 600);
+  });
+
+  function getFriendlyIssueDetails(dtc) {
+    const code = dtc.code || '';
+    if (code === 'P0A80' || dtc.desc?.includes('Battery') || dtc.desc?.includes('Cell')) {
+      return {
+        title: 'Battery Temperature / Cell Imbalance Alert',
+        desc: 'The high-voltage lithium battery pack reported elevated temperature or abnormal cell variance. System is limiting power to protect battery health.',
+        system: 'High-Voltage Battery Management (BMS)',
+        dtc: dtc.code || 'P0A80',
+        action: 'Activate Coolant Chiller Loop & Rebalance Cell Voltages'
+      };
+    } else if (code === 'C0035' || dtc.desc?.includes('Tire') || dtc.desc?.includes('Pressure')) {
+      return {
+        title: 'Tire Pressure Critical Alert',
+        desc: 'One of the vehicle tires has dropped below safe driving pressure (< 22 PSI). Immediate tire inflation or repair is recommended.',
+        system: 'Tire Pressure Monitoring System (TPMS)',
+        dtc: dtc.code || 'C0035',
+        action: 'Re-inflate to 35 PSI & Calibrate Pressure Sensor'
+      };
+    } else if (code === 'P0117' || dtc.desc?.includes('Coolant') || dtc.desc?.includes('Overheat')) {
+      return {
+        title: 'Engine Coolant Overheating Alert',
+        desc: 'Gasoline engine coolant temperature has reached 115°C. The engine is throttled to prevent overheating damage.',
+        system: 'Engine Thermal & Radiator Loop',
+        dtc: dtc.code || 'P0117',
+        action: 'Turn Radiator Fans to 100% & Open Thermostat Valve'
+      };
+    } else if (code === 'P0A78' || dtc.desc?.includes('Inverter')) {
+      return {
+        title: 'Electric Inverter Overheat Alert',
+        desc: 'The electric motor 3-phase power inverter has exceeded normal thermal limits (> 95°C).',
+        system: 'Electric Motor & Inverter Drive',
+        dtc: dtc.code || 'P0A78',
+        action: 'Derate Motor Torque & Increase Coolant Pump Flow'
+      };
+    } else if (code === 'P0300' || dtc.desc?.includes('Misfire')) {
+      return {
+        title: 'Engine Cylinder Misfire Detected',
+        desc: 'A misfire was detected in the gasoline engine cylinders, reducing engine power output.',
+        system: '1.5L Turbo Gasoline Engine (ICE)',
+        dtc: dtc.code || 'P0300',
+        action: 'Reset Fuel Injection Mapping & Clear Cylinder Code'
+      };
+    } else if (code === 'B1049' || dtc.desc?.includes('Radar')) {
+      return {
+        title: 'Forward Safety Radar Sensor Obstructed',
+        desc: 'The forward radar camera is unable to detect vehicles ahead. Automatic collision warning is paused.',
+        system: 'Active Driver Assistance (ADAS)',
+        dtc: dtc.code || 'B1049',
+        action: 'Run Sensor Optical Self-Check & Diagnostic Reset'
+      };
+    } else {
+      return {
+        title: dtc.desc || 'Vehicle Warning Detected',
+        desc: 'A vehicle diagnostic code was triggered. Automated calibration can restore nominal operating parameters.',
+        system: dtc.system || 'Powertrain Computer',
+        dtc: dtc.code || 'DTC Alert',
+        action: 'Clear Fault Code & Restore Safe Mode'
+      };
+    }
+  }
+
   // Friendly mode description mappings
   const modeDescriptions = {
     'PURE_EV': 'Electric Driving (Zero Emissions)',
@@ -217,23 +333,38 @@ document.addEventListener('DOMContentLoaded', () => {
     setText('adas-bs-r', t.chassis?.blindspot_r ? 'Vehicle Detected' : 'Clear');
     setText('adas-ldw', t.chassis?.lane_warning ? 'Drift Warning' : 'In Lane');
 
-    // Telltales
-    setTelltale('tt-ready', true, 'ready');
-    setTelltale('tt-limp', t.diagnostics?.limp_mode, 'critical');
-    setTelltale('tt-mil', t.diagnostics?.check_engine, 'critical');
-    setTelltale('tt-batt', (t.battery?.temp_max_c > 50 || t.battery?.soc_pct < 10), 'warning');
-    setTelltale('tt-tpms', (t.chassis?.tires?.fl_psi < 24), 'warning');
-    setTelltale('tt-radar', (radarDist < 15.0), 'warning');
+    // Pop-up Safety Incident Check
+    if (t.diagnostics?.active_dtcs && t.diagnostics.active_dtcs.length > 0) {
+      const primaryIssue = t.diagnostics.active_dtcs[0];
+      const issueKey = primaryIssue.code || primaryIssue.desc;
+
+      if (issueKey !== lastReportedDtcCode && !isModalOpen) {
+        lastReportedDtcCode = issueKey;
+        const details = getFriendlyIssueDetails(primaryIssue);
+        showIncidentModal(details);
+      }
+    } else if (lastReportedDtcCode && (!t.diagnostics?.active_dtcs || t.diagnostics.active_dtcs.length === 0)) {
+      lastReportedDtcCode = null;
+      if (isModalOpen) hideIncidentModal();
+    }
 
     // Cockpit notification banner
     const diagBanner = document.getElementById('cockpit-diag-banner');
     if (diagBanner) {
       if (t.diagnostics?.active_dtcs && t.diagnostics.active_dtcs.length > 0) {
         diagBanner.classList.add('warning-mode');
-        diagBanner.innerHTML = `<span class="alert-indicator"></span><span class="alert-text">${t.diagnostics.active_dtcs.length} Issue(s) Detected - See Details in Test Lab</span>`;
+        diagBanner.innerHTML = `<span class="alert-indicator"></span><span class="alert-text">${t.diagnostics.active_dtcs.length} Issue(s) Detected - Click to Fix</span>`;
+        diagBanner.style.cursor = 'pointer';
+        diagBanner.onclick = () => {
+          if (t.diagnostics.active_dtcs.length > 0) {
+            showIncidentModal(getFriendlyIssueDetails(t.diagnostics.active_dtcs[0]));
+          }
+        };
       } else {
         diagBanner.classList.remove('warning-mode');
         diagBanner.innerHTML = `<span class="alert-indicator"></span><span class="alert-text">All Vehicle Systems Operating Normally</span>`;
+        diagBanner.style.cursor = 'default';
+        diagBanner.onclick = null;
       }
     }
 

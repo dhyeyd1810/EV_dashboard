@@ -158,7 +158,15 @@ class HybridVehicleSimulator:
         self.chassis_ecu.fault_tire_leak_fl = False
         self.chassis_ecu.fault_radar_sensor_blind = False
         self.diag_ecu.clear_all_faults()
+
         self.state.tire_fl_psi = 35.2
+        self.state.battery_temp_max_c = 29.5
+        self.state.battery_temp_avg_c = 28.0
+        self.state.engine_coolant_temp_c = 88.0
+        self.state.inverter_temp_c = 42.0
+        self.state.drive_mode = DriveMode.COMFORT
+        self.state.limp_home_active = False
+
 
     def get_full_telemetry_snapshot(self) -> Dict[str, Any]:
         """Returns JSON-serializable snapshot of complete vehicle telemetry"""

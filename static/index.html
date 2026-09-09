@@ -21,15 +21,7 @@
       <div class="system-time" id="system-time">12:00:00</div>
     </div>
 
-    <!-- Safety Status Indicator Telltales (Clean Minimalist Text Badges) -->
-    <div class="header-center-telltales">
-      <div class="telltale" id="tt-ready">READY</div>
-      <div class="telltale" id="tt-limp">LIMP MODE</div>
-      <div class="telltale" id="tt-mil">ENGINE CHECK</div>
-      <div class="telltale" id="tt-batt">BATTERY ALERT</div>
-      <div class="telltale" id="tt-tpms">TIRE PRESSURE</div>
-      <div class="telltale" id="tt-radar">RADAR ALERT</div>
-    </div>
+
 
     <div class="header-right">
       <div class="status-pill" id="can-bus-indicator">
@@ -121,14 +113,7 @@
 
         <!-- Center Column: Speedometer & Car ADAS View -->
         <div class="cockpit-card center-hud-card">
-          <!-- Gear Selection Ribbon -->
-          <div class="gear-selector-bar">
-            <span class="gear-btn active" id="gear-p">P</span>
-            <span class="gear-btn" id="gear-r">R</span>
-            <span class="gear-btn" id="gear-n">N</span>
-            <span class="gear-btn" id="gear-d">D</span>
-            <span class="gear-btn" id="gear-b">B</span>
-          </div>
+
 
           <!-- Speedometer Dial -->
           <div class="speedo-container">
@@ -567,6 +552,39 @@
 
     </div>
   </aside>
+
+  <!-- Error & Safety Incident Pop-up Modal -->
+  <div class="alert-modal-overlay" id="alert-modal-overlay">
+    <div class="alert-modal-box">
+      <div class="modal-indicator-bar"></div>
+      <div class="alert-modal-header">
+        <span class="modal-badge-warn">Safety System Alert</span>
+        <button class="modal-close-btn" id="btn-modal-dismiss">✕</button>
+      </div>
+      <div class="alert-modal-body">
+        <h3 id="modal-error-title">Issue Detected</h3>
+        <p id="modal-error-desc">A vehicle subsystem has reported abnormal operation.</p>
+        <div class="modal-info-panel">
+          <div class="modal-info-row">
+            <span>Affected Subsystem:</span>
+            <strong id="modal-affected-system">Battery Pack</strong>
+          </div>
+          <div class="modal-info-row">
+            <span>System Diagnostic:</span>
+            <strong id="modal-dtc-code">Critical Alert</strong>
+          </div>
+          <div class="modal-info-row">
+            <span>Automated Remedy:</span>
+            <strong id="modal-action-text">Run Automated Sensor Recalibration & Cooling Boost</strong>
+          </div>
+        </div>
+      </div>
+      <div class="alert-modal-actions">
+        <button class="btn-modal-fix" id="btn-modal-fix">Fix Issue Automatically (OK)</button>
+        <button class="btn-modal-secondary" id="btn-modal-close">Dismiss</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Scripts -->
   <script src="/static/js/gauges.js"></script>
