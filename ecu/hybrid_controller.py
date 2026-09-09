@@ -60,56 +60,118 @@ class HybridControlUnitECU:
             state.power_split_ratio_pct = 100.0
 
         elif requested_torque > 0.0:
-            # 3. Acceleration / Cruising Power Split Strategy
+            # 3. Speed-Based Intelligent Power Distribution Strategy
+            # Mode 1: Pure Electric (0 to 40 km/h)   - 100% EV Motor, 0% ICE (Zero Emissions, Max City Efficiency)
+            # Mode 2: Hybrid (40 to 80 km/h)         - 50/50 Blended Power Split (Optimal BSFC & Smooth Torque)
+            # Mode 3: Fuel Direct (> 80 km/h)        - ~85% ICE Direct / 15% Motor Assist (High-Speed Thermal Efficiency)
             soc = state.battery_soc_pct
             speed = state.speed_kmh
             fuel_ok = state.fuel_level_l > 0.5
+            batt_ok = soc > 12.0
 
-            # Strategy Selection
-            if state.drive_mode == DriveMode.EV_HOLD and fuel_ok:
-                # Driver explicitly requested to preserve EV battery for later
+            # -----------------------------------------------------------------
+            # 1. PURE ELECTRIC MODE (0 to 40 km/h)
+            # Strictly 100% Electric Motor Propulsion, ICE Engine is completely OFF
+            # -----------------------------------------------------------------
+            if speed < 40.0:
+                if batt_ok:
+                    # 100% Pure Electric Motor Propulsion, ICE Engine is completely OFF
+                    state.powertrain_mode = PowertrainMode.PURE_EV
+                    motor_torque = requested_torque
+                    engine_power_kw = 0.0
+                    state.power_split_ratio_pct = 100.0
+                    state.actual_wheel_torque_nm = motor_torque
+                elif fuel_ok:
+                    # Low battery emergency sustaining: Series generation
+                    state.powertrain_mode = PowertrainMode.SERIES_HYBRID
+                    motor_torque = requested_torque
+                    engine_power_kw = max(12.0, min(65.0, (requested_torque * 0.22) + (15.0 - soc) * 2.5))
+                    state.power_split_ratio_pct = 25.0
+                    state.actual_wheel_torque_nm = motor_torque
+                else:
+                    # Emergency depleted reserve
+                    state.powertrain_mode = PowertrainMode.PURE_EV
+                    motor_torque = requested_torque * 0.5
+                    engine_power_kw = 0.0
+                    state.power_split_ratio_pct = 100.0
+                    state.actual_wheel_torque_nm = motor_torque
+
+            # Override A: Driver selected EV_HOLD mode (preserve battery for later at >40 km/h)
+            elif state.drive_mode == DriveMode.EV_HOLD and fuel_ok:
                 state.powertrain_mode = PowertrainMode.SERIES_HYBRID
                 motor_torque = requested_torque * 0.8
-                engine_power_kw = min(80.0, requested_torque * 0.25 + 15.0) # Engine charges battery while driving
+                engine_power_kw = min(85.0, requested_torque * 0.25 + 15.0)
                 state.power_split_ratio_pct = 40.0
+                state.actual_wheel_torque_nm = requested_torque
 
-            elif soc > 18.0 and (speed < self.ev_speed_threshold_kmh or not fuel_ok) and requested_torque < 280.0:
-                # PURE EV MODE: Sufficient battery, low to moderate torque demand
-                state.powertrain_mode = PowertrainMode.PURE_EV
-                motor_torque = requested_torque
-                engine_power_kw = 0.0
-                state.power_split_ratio_pct = 100.0
-
-            elif soc <= 18.0 and fuel_ok:
-                # LOW BATTERY: SERIES HYBRID / SUSTAINING MODE
-                state.powertrain_mode = PowertrainMode.SERIES_HYBRID
-                motor_torque = requested_torque * 0.7
-                # Engine generates electricity to sustain battery & assist propulsion
-                engine_power_kw = max(12.0, min(90.0, (requested_torque * 0.2) + (20.0 - soc) * 2.5))
-                state.power_split_ratio_pct = 30.0
-
-            elif requested_torque >= 280.0 and fuel_ok:
-                # HIGH ACCELERATION / BOOST: PARALLEL HYBRID (Engine + Motor Combined)
+            # Override B: Hard Kickdown / Boost (Heavy throttle demand > 320 Nm for rapid highway overtaking)
+            elif requested_torque >= 320.0 and fuel_ok and batt_ok:
                 state.powertrain_mode = PowertrainMode.PARALLEL_HYBRID
-                motor_torque = min(280.0, requested_torque * 0.65)
-                engine_power_kw = min(110.0, requested_torque * 0.22)
-                state.power_split_ratio_pct = 60.0
+                motor_torque = min(280.0, requested_torque * 0.55)
+                engine_power_kw = min(115.0, (requested_torque * 0.45) / 1.7)
+                state.power_split_ratio_pct = 55.0
+                state.actual_wheel_torque_nm = requested_torque
 
-            elif speed >= self.ev_speed_threshold_kmh and fuel_ok:
-                # HIGHWAY CRUISE: ENGINE DIRECT
-                state.powertrain_mode = PowertrainMode.ENGINE_DIRECT
-                motor_torque = requested_torque * 0.2
-                engine_power_kw = min(75.0, (requested_torque * 0.25) + 10.0)
-                state.power_split_ratio_pct = 20.0
+            # -----------------------------------------------------------------
+            # 2. HYBRID MODE (40 to 80 km/h)
+            # -----------------------------------------------------------------
+            elif 40.0 <= speed < 80.0:
+                if fuel_ok and batt_ok:
+                    # Balanced Hybrid Split: 50% Motor instant response + 50% ICE BSFC sweet-spot
+                    state.powertrain_mode = PowertrainMode.PARALLEL_HYBRID
+                    motor_torque = requested_torque * 0.50
+                    # Engine delivers 50% torque equivalent (converted to kW at current load)
+                    engine_power_kw = min(90.0, max(8.0, (requested_torque * 0.50) / 1.75 + 5.0))
+                    state.power_split_ratio_pct = 50.0
+                    state.actual_wheel_torque_nm = requested_torque
+                elif batt_ok:
+                    # Fuel empty fallback: Pure EV
+                    state.powertrain_mode = PowertrainMode.PURE_EV
+                    motor_torque = requested_torque
+                    engine_power_kw = 0.0
+                    state.power_split_ratio_pct = 100.0
+                    state.actual_wheel_torque_nm = motor_torque
+                elif fuel_ok:
+                    # Battery low fallback: Engine direct drive
+                    state.powertrain_mode = PowertrainMode.ENGINE_DIRECT
+                    motor_torque = requested_torque * 0.15
+                    engine_power_kw = min(95.0, (requested_torque * 0.85) / 1.7 + 8.0)
+                    state.power_split_ratio_pct = 15.0
+                    state.actual_wheel_torque_nm = requested_torque
+                else:
+                    state.powertrain_mode = PowertrainMode.PURE_EV
+                    motor_torque = requested_torque * 0.4
+                    engine_power_kw = 0.0
+                    state.power_split_ratio_pct = 100.0
+                    state.actual_wheel_torque_nm = motor_torque
 
-            else:
-                # Fallback to Motor
-                state.powertrain_mode = PowertrainMode.PURE_EV
-                motor_torque = requested_torque
-                engine_power_kw = 0.0
-                state.power_split_ratio_pct = 100.0
-
-            state.actual_wheel_torque_nm = motor_torque + (engine_power_kw * 1.5 if state.powertrain_mode == PowertrainMode.PARALLEL_HYBRID else 0.0)
+            # -----------------------------------------------------------------
+            # 3. FUEL / ENGINE DIRECT MODE (> 80 km/h)
+            # -----------------------------------------------------------------
+            else: # speed >= 80.0 km/h
+                if fuel_ok:
+                    # Highway Cruising: ICE directly drives drivetrain (peak thermodynamic efficiency)
+                    # Electric motor provides light 15% assist / torque trimming
+                    state.powertrain_mode = PowertrainMode.ENGINE_DIRECT
+                    motor_torque = requested_torque * 0.15 if batt_ok else 0.0
+                    ice_share = 0.85 if batt_ok else 1.0
+                    highway_aero_factor = (speed - 80.0) * 0.25
+                    engine_power_kw = min(115.0, max(15.0, (requested_torque * ice_share) / 1.7 + highway_aero_factor))
+                    state.power_split_ratio_pct = 15.0 if batt_ok else 0.0
+                    state.actual_wheel_torque_nm = requested_torque
+                elif batt_ok:
+                    # Fuel empty: High speed EV fallback
+                    state.powertrain_mode = PowertrainMode.PURE_EV
+                    motor_torque = requested_torque
+                    engine_power_kw = 0.0
+                    state.power_split_ratio_pct = 100.0
+                    state.actual_wheel_torque_nm = motor_torque
+                else:
+                    state.powertrain_mode = PowertrainMode.PURE_EV
+                    motor_torque = requested_torque * 0.3
+                    engine_power_kw = 0.0
+                    state.power_split_ratio_pct = 100.0
+                    state.actual_wheel_torque_nm = motor_torque
 
         else:
             state.actual_wheel_torque_nm = 0.0

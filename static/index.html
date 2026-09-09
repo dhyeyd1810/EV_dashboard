@@ -309,24 +309,24 @@
           <h3>How the Hybrid System Intelligently Switches Power</h3>
           <div class="hcu-modes-diagram">
             <div class="hcu-mode-box" id="hcu-box-ev">
-              <h4>1. Pure Electric Mode</h4>
-              <p>Engine is completely off. The car runs 100% on battery power with zero tailpipe emissions.</p>
-            </div>
-            <div class="hcu-mode-box" id="hcu-box-series">
-              <h4>2. Series Hybrid Mode</h4>
-              <p>Engine turns on quietly to act as an onboard generator, charging the battery while driving.</p>
+              <h4>1. Pure Electric (0 – 40 km/h)</h4>
+              <p>Engine completely off. 100% electric motor traction for stop-and-go city traffic with zero fuel consumption and instant torque.</p>
             </div>
             <div class="hcu-mode-box" id="hcu-box-parallel">
-              <h4>3. Parallel Boost Mode</h4>
-              <p>Both engine and electric motor work together for maximum acceleration and uphill climbing.</p>
+              <h4>2. Hybrid Split (40 – 80 km/h)</h4>
+              <p>50/50 balanced power split between electric motor and gas engine operating in its peak BSFC thermal efficiency sweet-spot.</p>
             </div>
             <div class="hcu-mode-box" id="hcu-box-direct">
-              <h4>4. Engine Highway Cruise</h4>
-              <p>Engine directly drives the wheels at high speeds where gasoline engines are most efficient.</p>
+              <h4>3. Fuel Direct (> 80 km/h)</h4>
+              <p>Gas engine directly drives wheels with high mechanical efficiency for highway cruising, with light electric assist.</p>
+            </div>
+            <div class="hcu-mode-box" id="hcu-box-series">
+              <h4>4. Series Sustaining</h4>
+              <p>Engine runs as an onboard generator to sustain the battery during low SoC or Battery Hold mode.</p>
             </div>
             <div class="hcu-mode-box" id="hcu-box-regen">
               <h4>5. Regenerative Braking</h4>
-              <p>When slowing down, the motor acts as a generator to recharge the battery using kinetic energy.</p>
+              <p>Motor acts as a high-power generator during deceleration, harvesting kinetic energy directly back into the battery.</p>
             </div>
           </div>
         </div>
@@ -553,35 +553,35 @@
     </div>
   </aside>
 
-  <!-- Error & Safety Incident Pop-up Modal -->
+  <!-- Error & Safety Incident Pop-up Modal (Asks User Permission to Fix) -->
   <div class="alert-modal-overlay" id="alert-modal-overlay">
     <div class="alert-modal-box">
       <div class="modal-indicator-bar"></div>
       <div class="alert-modal-header">
-        <span class="modal-badge-warn">Safety System Alert</span>
-        <button class="modal-close-btn" id="btn-modal-dismiss">✕</button>
+        <span class="modal-badge-warn">⚠ System Fault • Action Required</span>
+        <button class="modal-close-btn" id="btn-modal-dismiss" title="Close">✕</button>
       </div>
       <div class="alert-modal-body">
-        <h3 id="modal-error-title">Issue Detected</h3>
-        <p id="modal-error-desc">A vehicle subsystem has reported abnormal operation.</p>
+        <h3 id="modal-error-title">Permission Requested: Fault Detected</h3>
+        <p id="modal-error-desc">A vehicle ECU has reported an abnormal condition. Do you grant permission to execute automated diagnostic recalibration and fix this issue?</p>
         <div class="modal-info-panel">
           <div class="modal-info-row">
             <span>Affected Subsystem:</span>
-            <strong id="modal-affected-system">Battery Pack</strong>
+            <strong id="modal-affected-system">Battery Pack (BMS)</strong>
           </div>
           <div class="modal-info-row">
-            <span>System Diagnostic:</span>
-            <strong id="modal-dtc-code">Critical Alert</strong>
+            <span>Diagnostic Code:</span>
+            <strong id="modal-dtc-code">P0A80</strong>
           </div>
           <div class="modal-info-row">
-            <span>Automated Remedy:</span>
-            <strong id="modal-action-text">Run Automated Sensor Recalibration & Cooling Boost</strong>
+            <span>Proposed Fix:</span>
+            <strong id="modal-action-text">Run Automated Electronic Recalibration</strong>
           </div>
         </div>
       </div>
       <div class="alert-modal-actions">
-        <button class="btn-modal-fix" id="btn-modal-fix">Fix Issue Automatically (OK)</button>
-        <button class="btn-modal-secondary" id="btn-modal-close">Dismiss</button>
+        <button class="btn-modal-fix" id="btn-modal-fix">✓ Grant Permission & Fix Issue</button>
+        <button class="btn-modal-secondary" id="btn-modal-close">✕ Dismiss / Keep Fault</button>
       </div>
     </div>
   </div>

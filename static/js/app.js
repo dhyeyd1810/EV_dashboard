@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
   btnModalClose?.addEventListener('click', hideIncidentModal);
 
   btnModalFix?.addEventListener('click', () => {
-    btnModalFix.textContent = 'Applying Automated Electronic Fix...';
+    btnModalFix.textContent = 'Permission Granted! Applying Fix...';
     
     // Trigger reset faults on the backend
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -149,10 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.btn-fault').forEach(b => b.classList.remove('active'));
 
     setTimeout(() => {
-      btnModalFix.textContent = 'Issue Resolved! Restoring System...';
+      btnModalFix.textContent = 'Fault Cleared & Systems Restored!';
       setTimeout(() => {
         hideIncidentModal();
-        btnModalFix.textContent = 'Fix Issue Automatically (OK)';
+        btnModalFix.textContent = '✓ Grant Permission & Fix Issue';
         lastReportedDtcCode = null;
       }, 700);
     }, 600);
@@ -221,11 +221,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Friendly mode description mappings
   const modeDescriptions = {
-    'PURE_EV': 'Electric Driving (Zero Emissions)',
-    'SERIES_HYBRID': 'Hybrid (Engine Charging Battery)',
-    'PARALLEL_HYBRID': 'Hybrid (Engine + Motor Boost)',
-    'ENGINE_DIRECT': 'Gasoline Highway Cruising',
-    'REGEN_BRAKING': 'Braking Energy Recovery'
+    'PURE_EV': 'Pure Electric (0-40 km/h: 100% Battery)',
+    'SERIES_HYBRID': 'Series Hybrid (Engine Generating Electricity)',
+    'PARALLEL_HYBRID': 'Hybrid Split (40-80 km/h: 50% Motor + 50% Engine)',
+    'ENGINE_DIRECT': 'Fuel Direct (>80 km/h: Engine Cruising)',
+    'REGEN_BRAKING': 'Regen Braking (Energy Recovery)'
   };
 
   const driveModeNames = {
