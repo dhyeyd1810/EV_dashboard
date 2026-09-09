@@ -1,10 +1,10 @@
-# AURA-PHEV // Next-Gen Hybrid Embedded Digital Cluster & Simulation Architecture
+# PHEV // Next-Gen Hybrid Embedded Digital Cluster & Simulation Architecture
 
 A high-fidelity software simulation and digital cockpit dashboard built for an **Embedded Systems Architecture** course. It models a modern **Plug-in Hybrid Electric Vehicle (PHEV)** with dual electric & internal combustion powertrains, realistic Electronic Control Units (ECUs), a virtual CAN-FD message bus with DBC specifications, thermal management loops, 96-cell BMS monitoring, and an interactive fault injection testing suite.
 
 ---
 
-## 🏗️ System Architecture & ECU Partitioning
+##  System Architecture & ECU Partitioning
 
 The architecture follows automotive industry standards (AUTOSAR / ISO 26262 ASIL) where independent ECU nodes communicate cyclically over a broadcast CAN bus:
 
@@ -35,7 +35,7 @@ The architecture follows automotive industry standards (AUTOSAR / ISO 26262 ASIL
 
 ---
 
-## 📟 CAN-FD Message & DBC Specification Matrix
+##  CAN-FD Message & DBC Specification Matrix
 
 | CAN ID | Message Name | Transmitter ECU | Cycle (ms) | Key Signals & Units |
 |---|---|---|---|---|
@@ -49,7 +49,7 @@ The architecture follows automotive industry standards (AUTOSAR / ISO 26262 ASIL
 
 ---
 
-## ⚡ Mathematical & Physics Models
+##  Mathematical & Physics Models
 
 ### 1. Vehicle Longitudinal Dynamics
 $$F_{net} = F_{wheel} - (F_{drag} + F_{roll} + F_{grade})$$
@@ -82,7 +82,7 @@ $$F_{net} = F_{wheel} - (F_{drag} + F_{roll} + F_{grade})$$
    http://localhost:8080
    ```
 
-### 🎮 Interactive Controls & Keyboard Shortcuts
+###  Interactive Controls & Keyboard Shortcuts
 - **W / ArrowUp**: Accelerate (increases throttle %)
 - **S / ArrowDown**: Brake (applies regenerative & friction braking)
 - **Space**: Emergency Full Stop
@@ -91,7 +91,7 @@ $$F_{net} = F_{wheel} - (F_{drag} + F_{roll} + F_{grade})$$
 
 ---
 
-## 🔌 Future Hardware Integration (Microcontroller Ready)
+##  Future Hardware Integration (Microcontroller Ready)
 
 The code utilizes a clean **Hardware Abstraction Layer (HAL)**:
 - To bridge to physical hardware (e.g. **ESP32**, **STM32**, or **Raspberry Pi** with an **MCP2515 CAN transceiver**), implement a serial reader in `bus/hal_bridge.py` that listens on a USB COM port and feeds CAN frames directly into `global_can_bus.publish()`.
