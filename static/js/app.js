@@ -38,13 +38,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 4. Controls & Fault Drawer Toggle
+  // 4. Controls & Fault Drawer Toggle & Fullscreen
   const drawer = document.getElementById('controls-drawer');
   const btnToggleControls = document.getElementById('btn-toggle-controls');
   const btnCloseDrawer = document.getElementById('btn-close-drawer');
+  const btnFullscreen = document.getElementById('btn-fullscreen');
 
-  btnToggleControls?.addEventListener('click', () => drawer.classList.toggle('open'));
-  btnCloseDrawer?.addEventListener('click', () => drawer.classList.remove('open'));
+  btnToggleControls?.addEventListener('click', () => drawer?.classList.toggle('open'));
+  btnCloseDrawer?.addEventListener('click', () => drawer?.classList.remove('open'));
+
+  btnFullscreen?.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.warn('Fullscreen request failed:', err);
+      });
+      btnFullscreen.textContent = '✕ Exit Fullscreen';
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+      btnFullscreen.textContent = '⛶ Fullscreen';
+    }
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    if (btnFullscreen) {
+      btnFullscreen.textContent = document.fullscreenElement ? '✕ Exit Fullscreen' : '⛶ Fullscreen';
+    }
+  });
 
   // 5. System Clock Timer
   function updateClock() {

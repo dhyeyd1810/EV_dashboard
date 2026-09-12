@@ -37,7 +37,10 @@ async def websocket_handler(request):
                     msg_type = payload.get("type", "")
 
                     if msg_type == "control":
-                        global_simulator.apply_driver_control(payload.get("data", {}))
+                        ctrl_data = payload.get("data")
+                        if not isinstance(ctrl_data, dict):
+                            ctrl_data = {k: v for k, v in payload.items() if k != "type"}
+                        global_simulator.apply_driver_control(ctrl_data)
                     elif msg_type == "fault_inject":
                         fault_name = payload.get("fault", "")
                         enabled = payload.get("enabled", True)
@@ -147,10 +150,36 @@ async def cleanup_background_tasks(app):
         except asyncio.CancelledError:
             pass
 
+import socket
+
+def get_local_ip():
+    """Detect the local machine LAN IP address for cross-device tablet pairing"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+async def api_get_host_info(request):
+    """REST endpoint returning server host LAN IP and pairing URLs"""
+    ip = get_local_ip()
+    host_header = request.headers.get("Host", "")
+    port = host_header.split(":")[-1] if ":" in host_header else "8080"
+    return web.json_response({
+        "local_ip": ip,
+        "port": port,
+        "dashboard_url": f"http://{ip}:{port}/",
+        "simulation_url": f"http://localhost:{port}/simulation"
+    })
+
 def create_app():
     app = web.Application()
 
     # REST APIs
+    app.router.add_get('/api/host-info', api_get_host_info)
     app.router.add_get('/api/telemetry', api_get_telemetry)
     app.router.add_get('/api/can', api_get_can_frames)
     app.router.add_post('/api/control', api_post_control)
@@ -159,41 +188,65 @@ def create_app():
     # WebSocket Stream
     app.router.add_get('/ws', websocket_handler)
 
-    # Static Assets & Web Dashboard
+    # Static Assets & Pages
     static_dir = os.path.join(os.path.dirname(__file__), 'static')
     if not os.path.exists(static_dir):
         os.makedirs(static_dir, exist_ok=True)
 
     app.router.add_static('/static/', path=static_dir, name='static')
 
-    async def index_redirect(request):
+    async def dashboard_page(request):
         return web.FileResponse(os.path.join(static_dir, 'index.html'))
 
-    app.router.add_get('/', index_redirect)
+    async def simulation_page(request):
+        return web.FileResponse(os.path.join(static_dir, 'simulation.html'))
+
+    app.router.add_get('/', dashboard_page)
+    app.router.add_get('/dashboard', dashboard_page)
+    app.router.add_get('/tablet', dashboard_page)
+    app.router.add_get('/cluster', dashboard_page)
+    app.router.add_get('/simulation', simulation_page)
+    app.router.add_get('/sim', simulation_page)
+    app.router.add_get('/control', simulation_page)
 
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
 
     return app
 
-def open_browser(url: str):
-    """Automatically launch the default web browser after server initializes"""
+def open_browsers(port: int):
+    """Automatically launch both the Cockpit Dashboard and PC Simulation tabs"""
     import time
     time.sleep(0.8)
+    cockpit_url = f"http://localhost:{port}/"
+    sim_url = f"http://localhost:{port}/simulation"
     try:
-        webbrowser.open(url)
+        # Open Cockpit tab (to drag to Legion Tab)
+        webbrowser.open(cockpit_url)
+        time.sleep(0.4)
+        # Open Simulation Lab tab (to keep on PC)
+        webbrowser.open(sim_url)
     except Exception as e:
-        logger.warning(f"Could not automatically open browser: {e}")
+        logger.warning(f"Could not automatically open browsers: {e}")
 
 def run_server():
     """Runs server with automatic port fallback if port is in use"""
-    app = create_app()
     base_port = int(os.environ.get("PORT", 8080))
+    local_ip = get_local_ip()
+
     for port in range(base_port, base_port + 10):
-        url = f"http://localhost:{port}"
+        url_local = f"http://localhost:{port}"
+        url_sim = f"http://localhost:{port}/simulation"
+        url_cockpit = f"http://localhost:{port}/"
         try:
-            logger.info(f"EV Smart Dashboard Server starting at {url}")
-            threading.Thread(target=open_browser, args=(url,), daemon=True).start()
+            logger.info("=" * 65)
+            logger.info("  AURA HYBRID EV TELEMETRY & CONTROL SERVER")
+            logger.info(f"  > Tab 1 (Cockpit Dashboard):    {url_cockpit}")
+            logger.info(f"  > Tab 2 (PC Simulation Lab):    {url_sim}")
+            logger.info("=" * 65)
+            threading.Thread(target=open_browsers, args=(port,), daemon=True).start()
+            # Pass fresh app factory or instance to avoid loop re-initialization error
+            app = create_app()
             web.run_app(app, host='0.0.0.0', port=port, print=None)
             break
         except OSError as e:

@@ -98,27 +98,46 @@ class HybridVehicleSimulator:
             self.state.brake_pedal_pct = 40.0
 
     def apply_driver_control(self, command: Dict[str, Any]):
-        """Handle incoming driver/dashboard control actions"""
-        if "accelerator" in command:
-            self.state.accelerator_pedal_pct = max(0.0, min(100.0, float(command["accelerator"])))
-        if "brake" in command:
-            self.state.brake_pedal_pct = max(0.0, min(100.0, float(command["brake"])))
+        """Handle incoming driver/dashboard control actions with alias support"""
+        # Accelerator / Throttle
+        accel_val = command.get("accelerator", command.get("throttle", command.get("throttle_pct", command.get("accel"))))
+        if accel_val is not None:
+            val = float(accel_val)
+            if 0.0 < val <= 1.0: # fraction provided (e.g. 0.75 -> 75%)
+                val *= 100.0
+            self.state.accelerator_pedal_pct = max(0.0, min(100.0, val))
+
+        # Brake
+        brake_val = command.get("brake", command.get("brake_pct"))
+        if brake_val is not None:
+            val = float(brake_val)
+            if 0.0 < val <= 1.0:
+                val *= 100.0
+            self.state.brake_pedal_pct = max(0.0, min(100.0, val))
+
+        # Gear Shift
         if "gear" in command:
             gear_map = {"P": Gear.PARK, "R": Gear.REVERSE, "N": Gear.NEUTRAL, "D": Gear.DRIVE, "B": Gear.BRAKE_REGEN}
             g = command["gear"]
-            if isinstance(g, str) and g in gear_map:
-                self.state.gear = gear_map[g]
+            if isinstance(g, str) and g.upper() in gear_map:
+                self.state.gear = gear_map[g.upper()]
             elif isinstance(g, int) and 0 <= g <= 4:
                 self.state.gear = Gear(g)
-        if "drive_mode" in command:
+
+        # Drive Mode
+        dm_val = command.get("drive_mode", command.get("mode"))
+        if dm_val is not None:
             dm_map = {"ECO": DriveMode.ECO, "COMFORT": DriveMode.COMFORT, "SPORT": DriveMode.SPORT, "EV_HOLD": DriveMode.EV_HOLD, "TRACK": DriveMode.TRACK}
-            dm = command["drive_mode"]
-            if isinstance(dm, str) and dm in dm_map:
-                self.state.drive_mode = dm_map[dm]
-            elif isinstance(dm, int) and 0 <= dm <= 5:
-                self.state.drive_mode = DriveMode(dm)
-        if "regen_setting" in command:
-            self.state.regen_setting = max(0, min(3, int(command["regen_setting"])))
+            if isinstance(dm_val, str) and dm_val.upper() in dm_map:
+                self.state.drive_mode = dm_map[dm_val.upper()]
+            elif isinstance(dm_val, int) and 0 <= dm_val <= 5:
+                self.state.drive_mode = DriveMode(dm_val)
+
+        # Regen setting
+        regen_val = command.get("regen_setting", command.get("regen_level", command.get("regen")))
+        if regen_val is not None:
+            self.state.regen_setting = max(0, min(3, int(regen_val)))
+
         if "ignition" in command:
             self.state.ignition_on = bool(command["ignition"])
         if "cabin_target_temp" in command:

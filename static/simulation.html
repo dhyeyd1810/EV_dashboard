@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA EV - Simulation Mission Control & CAN Test Bench</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/simulation.css">
+</head>
+<body class="sim-body">
+
+  <!-- Top Header Navigation -->
+  <header class="sim-header">
+    <div class="sim-header-left">
+      <div class="sim-brand">
+        <span class="sim-brand-title">AURA</span>
+        <span class="sim-badge-lab">MISSION CONTROL & TEST BENCH</span>
+      </div>
+      <div class="sim-clock" id="sim-clock">12:00:00</div>
+    </div>
+
+    <div class="sim-header-right">
+      <div class="sim-status-pill" id="sim-ws-status">
+        <span class="status-dot active"></span>
+        <span class="status-text">Sim Engine Live (50 Hz)</span>
+      </div>
+      <a href="/dashboard" class="btn-open-dashboard" target="_blank" title="Open Digital Cockpit in a new window/screen">
+        ⚡ Open Tablet Cockpit ↗
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="sim-main-container">
+
+    <!-- Dual Display Quick Setup Card -->
+    <section class="pairing-card">
+      <div class="pairing-header">
+        <div class="pairing-title-group">
+          <div class="device-icon">📱</div>
+          <div>
+            <h3>Dual Screen Setup • Lenovo Legion Tab</h3>
+            <p class="pairing-subtitle">Drag the <strong>Cockpit Dashboard</strong> tab over to your Lenovo Legion Tab screen (via Smart Connect) and press <strong>⛶ Fullscreen</strong>.</p>
+          </div>
+        </div>
+        <div class="pairing-actions">
+          <a href="/" target="_blank" class="btn-copy-url">⚡ Open Cockpit Tab ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Real-Time Telemetry HUD Strip -->
+    <section class="telemetry-hud-strip">
+      <div class="hud-item">
+        <span class="hud-label">Vehicle Speed</span>
+        <div class="hud-value-row">
+          <span class="hud-val color-cyan" id="hud-speed">0</span>
+          <span class="hud-unit">km/h</span>
+        </div>
+      </div>
+
+      <div class="hud-item">
+        <span class="hud-label">Battery Charge</span>
+        <div class="hud-value-row">
+          <span class="hud-val color-green" id="hud-soc">82%</span>
+          <span class="hud-unit" id="hud-pack-v">388V</span>
+        </div>
+      </div>
+
+      <div class="hud-item">
+        <span class="hud-label">Powertrain Output</span>
+        <div class="hud-value-row">
+          <span class="hud-val" id="hud-power">0.0</span>
+          <span class="hud-unit">kW</span>
+        </div>
+      </div>
+
+      <div class="hud-item">
+        <span class="hud-label">Engine Speed</span>
+        <div class="hud-value-row">
+          <span class="hud-val" id="hud-rpm">0</span>
+          <span class="hud-unit">RPM</span>
+        </div>
+      </div>
+
+      <div class="hud-item">
+        <span class="hud-label">Transmission & Mode</span>
+        <div class="hud-value-row">
+          <span class="hud-val color-amber" id="hud-gear">P</span>
+          <span class="hud-unit" id="hud-mode">COMFORT</span>
+        </div>
+      </div>
+
+      <div class="hud-item">
+        <span class="hud-label">Active Faults</span>
+        <div class="hud-value-row">
+          <span class="hud-val color-green" id="hud-fault-count">0 Active</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main 2-Column Grid: Controls on Left, Faults & DTC on Right -->
+    <div class="sim-grid-2col">
+
+      <!-- LEFT COLUMN: DRIVER CONTROLS & PEDALS -->
+      <section class="sim-card">
+        <div class="card-title-bar">
+          <div>
+            <h3>🎮 Driver Simulator & Cockpit Controls</h3>
+            <span class="card-subtitle">Control vehicle physics, throttle, brakes, and transmission in real-time</span>
+          </div>
+          <span class="keyboard-tip">Hotkeys: <strong>W/S</strong> (Pedals), <strong>Space</strong> (Brake)</span>
+        </div>
+
+        <div class="controls-wrapper">
+
+          <!-- Throttle Pedal -->
+          <div class="pedal-group">
+            <div class="pedal-header">
+              <span class="pedal-title">⚡ Accelerator (Throttle)</span>
+              <span class="pedal-readout" id="readout-accel">0%</span>
+            </div>
+            <div class="pedal-slider-row">
+              <input type="range" min="0" max="100" value="0" class="sim-slider accel-slider" id="sim-slider-accel">
+              <button class="btn-pedal-step" id="btn-accel-zero">0%</button>
+              <button class="btn-pedal-step" id="btn-accel-50">50%</button>
+              <button class="btn-pedal-step" id="btn-accel-100">100%</button>
+            </div>
+          </div>
+
+          <!-- Brake Pedal -->
+          <div class="pedal-group">
+            <div class="pedal-header">
+              <span class="pedal-title">🛑 Brake Pedal</span>
+              <span class="pedal-readout" id="readout-brake">0%</span>
+            </div>
+            <div class="pedal-slider-row">
+              <input type="range" min="0" max="100" value="0" class="sim-slider brake-slider" id="sim-slider-brake">
+              <button class="btn-pedal-step" id="btn-brake-zero">0%</button>
+              <button class="btn-pedal-step" id="btn-brake-50">50%</button>
+              <button class="btn-pedal-step btn-emergency" id="btn-brake-100">Emergency Stop</button>
+            </div>
+          </div>
+
+          <!-- Gear Shifter -->
+          <div class="control-segment">
+            <label class="segment-label">Gear Shift Position (PRNDB):</label>
+            <div class="btn-group-row">
+              <button class="btn-sim-gear active" data-gear="P">P (Park)</button>
+              <button class="btn-sim-gear" data-gear="R">R (Reverse)</button>
+              <button class="btn-sim-gear" data-gear="N">N (Neutral)</button>
+              <button class="btn-sim-gear" data-gear="D">D (Drive)</button>
+              <button class="btn-sim-gear" data-gear="B">B (Regen Brake)</button>
+            </div>
+          </div>
+
+          <!-- Drive Mode -->
+          <div class="control-segment">
+            <label class="segment-label">Powertrain Drive Mode:</label>
+            <div class="btn-group-row">
+              <button class="btn-sim-mode" data-mode="ECO">🌱 Eco</button>
+              <button class="btn-sim-mode active" data-mode="COMFORT">✨ Comfort</button>
+              <button class="btn-sim-mode" data-mode="SPORT">⚡ Sport</button>
+              <button class="btn-sim-mode" data-mode="EV_HOLD">🔋 Hold Battery</button>
+            </div>
+          </div>
+
+          <!-- Regenerative Strength -->
+          <div class="control-segment">
+            <label class="segment-label">Regenerative Braking Level:</label>
+            <div class="btn-group-row">
+              <button class="btn-sim-regen" data-regen="0">0: Coasting</button>
+              <button class="btn-sim-regen" data-regen="1">1: Low</button>
+              <button class="btn-sim-regen active" data-regen="2">2: Medium</button>
+              <button class="btn-sim-regen" data-regen="3">3: One-Pedal</button>
+            </div>
+          </div>
+
+          <!-- Automated Cruise & Drive Cycle -->
+          <div class="control-segment auto-drive-box">
+            <div>
+              <span class="auto-title">Automated Drive Cycle</span>
+              <p class="auto-sub">Simulate a dynamic city/highway driving pattern with speed fluctuations</p>
+            </div>
+            <button class="btn-auto-drive" id="btn-sim-auto-drive">▶ Start Auto-Drive Cycle</button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: FAULT INJECTION LAB & DTC CONSOLE -->
+      <section class="sim-card">
+        <div class="card-title-bar">
+          <div>
+            <h3>🧪 Safety Fault Injection & Diagnostic Lab</h3>
+            <span class="card-subtitle">Inject real vehicle faults to test ECU safety protections and dashboard reactions</span>
+          </div>
+          <button class="btn-reset-faults-all" id="btn-reset-all-faults">🔄 Reset All Faults</button>
+        </div>
+
+        <div class="fault-switchboard-grid">
+          <button class="fault-button" data-fault="bms_overheat">
+            <div class="fault-icon">🔥</div>
+            <div class="fault-info">
+              <span class="fault-name">Battery Overheat</span>
+              <span class="fault-desc">Pack Temp &gt; 60°C (DTC P0A80)</span>
+            </div>
+            <span class="fault-pill">NORMAL</span>
+          </button>
+
+          <button class="fault-button" data-fault="cell_imbalance">
+            <div class="fault-icon">⚖️</div>
+            <div class="fault-info">
+              <span class="fault-name">Cell Imbalance</span>
+              <span class="fault-desc">ΔV &gt; 300mV across 96 cells</span>
+            </div>
+            <span class="fault-pill">NORMAL</span>
+          </button>
+
+          <button class="fault-button" data-fault="isolation_loss">
+            <div class="fault-icon">⚡</div>
+            <div class="fault-info">
+              <span class="fault-name">Isolation Loss</span>
+              <span class="fault-desc">Chassis Leak &lt; 100 Ω/V (DTC P0AA6)</span>
+            </div>
+            <span class="fault-pill">NORMAL</span>
+          </button>
+
+          <button class="fault-button" data-fault="inverter_overheat">
+            <div class="fault-icon">🌡️</div>
+            <div class="fault-info">
+              <span class="fault-name">Inverter Overheat</span>
+              <span class="fault-desc">IGBT Power Stage &gt; 85°C</span>
+            </div>
+            <span class="fault-pill">NORMAL</span>
+          </button>
+
+          <button class="fault-button" data-fault="engine_misfire">
+            <div class="fault-icon">⚙️</div>
+            <div class="fault-info">
+              <span class="fault-name">Engine Misfire</span>
+              <span class="fault-desc">Cylinder 1 Combustion Drop</span>
+            </div>
+            <span class="fault-pill">NORMAL</span>
+          </button>
+
+          <button class="fault-button" data-fault="engine_overheat">
+            <div class="fault-icon">♨️</div>
+            <div class="fault-info">
+              <span class="fault-name">Coolant Overheat</span>
+              <span class="fault-desc">Radiator Temp &gt; 110°C</span>
+            </div>
+            <span class="fault-pill">NORMAL</span>
+          </button>
+
+          <button class="fault-button" data-fault="tire_leak">
+            <div class="fault-icon">💨</div>
+            <div class="fault-info">
+              <span class="fault-name">Front Tire Puncture</span>
+              <span class="fault-desc">FL TPMS Drop to 18 PSI</span>
+            </div>
+            <span class="fault-pill">NORMAL</span>
+          </button>
+
+          <button class="fault-button" data-fault="radar_blind">
+            <div class="fault-icon">📡</div>
+            <div class="fault-info">
+              <span class="fault-name">Radar Sensor Blind</span>
+              <span class="fault-desc">Forward ADAS Vision Blocked</span>
+            </div>
+            <span class="fault-pill">NORMAL</span>
+          </button>
+        </div>
+
+        <!-- Active Diagnostic Trouble Codes Console -->
+        <div class="dtc-console-section">
+          <div class="dtc-console-header">
+            <h4>Active Vehicle Diagnostic Trouble Codes (SAE J2012)</h4>
+            <span class="dtc-badge-count" id="dtc-badge-count">0 CODES</span>
+          </div>
+
+          <div class="dtc-list-wrapper" id="sim-dtc-container">
+            <div class="dtc-empty-message">✓ All vehicle ECUs reporting 0 fault codes. System nominal.</div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+    <!-- FULL WIDTH: REAL-TIME CAN BUS PACKET SNIFFER -->
+    <section class="sim-card can-sniffer-card">
+      <div class="card-title-bar">
+        <div>
+          <h3>📡 Real-Time Automotive CAN Bus Network Analyzer</h3>
+          <span class="card-subtitle">Live 500 kbps high-speed Controller Area Network telemetry packets between ECUs</span>
+        </div>
+        <div class="can-metrics">
+          <span class="can-metric-pill">Bus Load: <strong class="color-green" id="sniff-bus-load">18.5%</strong></span>
+          <span class="can-metric-pill">Total Frames: <strong class="color-cyan" id="sniff-total-frames">0</strong></span>
+          <span class="can-metric-pill">Rate: <strong>50 Hz (20ms)</strong></span>
+        </div>
+      </div>
+
+      <div class="can-table-wrapper">
+        <table class="sim-can-table">
+          <thead>
+            <tr>
+              <th style="width: 90px;">CAN ID</th>
+              <th style="width: 220px;">Message Identifier</th>
+              <th style="width: 140px;">Source ECU</th>
+              <th style="width: 80px;">Rate</th>
+              <th>Decoded Physical Signals & Parameters</th>
+            </tr>
+          </thead>
+          <tbody id="sim-can-table-body">
+            <!-- Dynamic CAN Bus Frames -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div class="sim-toast" id="sim-toast"></div>
+
+  <!-- Scripts -->
+  <script src="/static/js/simulation.js"></script>
+</body>
+</html>
